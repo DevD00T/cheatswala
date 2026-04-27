@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import styled, { css } from 'styled-components';
 import Center from './Center';
-import { useContext } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { CartContext } from './CartContext';
 import BarsIcon from './icons/Bars';
 import CloseIcon from './icons/Close';
@@ -15,7 +15,6 @@ import {
   SignUpButton,
   UserButton,
 } from '@clerk/nextjs';
-import ModeToggle from './mode-toggle';
 
 const StyledHeader = styled.header`
   background: var(--header-bg);
@@ -34,6 +33,48 @@ const Logo = styled(Link)`
   font-weight: 800;
   letter-spacing: 0.03em;
   font-size: 1.05rem;
+`;
+
+const LogoInner = styled.span`
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.03em;
+  position: relative;
+  padding: 2px 0;
+`;
+
+const VisuallyHidden = styled.span`
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+`;
+
+const LogoLetter = styled.span`
+  display: inline-block;
+  will-change: transform, opacity;
+`;
+
+const LogoUnderline = styled.span`
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 999px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(23, 161, 111, 0.95),
+    rgba(59, 130, 246, 0.9)
+  );
 `;
 
 const Wrapper = styled.div`
@@ -165,16 +206,82 @@ const Header = () => {
   const { cartProducts } = useContext(CartContext);
   const { mobileNavActive, setMobileNavActive } = useContext(NavActiveContext);
   const router = useRouter();
+  const logoScopeRef = useRef(null);
 
   const isActive = (href) =>
     router.pathname === href || router.pathname.startsWith(`${href}/`);
+
+  useEffect(() => {
+    let ctx;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    (async () => {
+      try {
+        const mod = await import('gsap');
+        const gsap = mod.gsap || mod.default || mod;
+
+        if (!logoScopeRef.current) {
+          return;
+        }
+
+        ctx = gsap.context(() => {
+          const letters = gsap.utils.toArray('.cw-logo-letter');
+
+          gsap.set(letters, { y: 10, opacity: 0 });
+          gsap.set('.cw-logo-underline', { scaleX: 0, opacity: 0 });
+
+          gsap.to(letters, {
+            y: 0,
+            opacity: 1,
+            duration: 0.55,
+            stagger: 0.03,
+            ease: 'power3.out',
+          });
+
+          gsap.to('.cw-logo-underline', {
+            scaleX: 1,
+            opacity: 1,
+            duration: 0.45,
+            ease: 'power3.out',
+            delay: 0.08,
+          });
+        }, logoScopeRef);
+      } catch (error) {
+        // GSAP is optional. If it fails, keep header static.
+      }
+    })();
+
+    return () => {
+      ctx?.revert();
+    };
+  }, []);
 
   return (
     <StyledHeader>
       <Center>
         <Wrapper>
           <Logo href='/' onClick={() => setMobileNavActive(false)}>
-            Cheatswala
+            <LogoInner ref={logoScopeRef} aria-label='Cheatswala'>
+              <VisuallyHidden>Cheatswala</VisuallyHidden>
+              {Array.from('Cheatswala').map((char, index) => (
+                <LogoLetter
+                  key={`${char}-${index}`}
+                  className='cw-logo-letter'
+                  aria-hidden='true'
+                >
+                  {char}
+                </LogoLetter>
+              ))}
+              <LogoUnderline className='cw-logo-underline' aria-hidden='true' />
+            </LogoInner>
           </Logo>
           <StyledNav mobileNavActive={mobileNavActive}>
             {navItems.map((item) => (
@@ -211,7 +318,6 @@ const Header = () => {
             </AuthControls>
           </StyledNav>
           <SideIcons>
-            <ModeToggle />
             <NavButton
               aria-label='Search products'
               reducesize
