@@ -65,16 +65,16 @@ const ProductPage = ({ product }) => {
      <Head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: `
-              {
+	          dangerouslySetInnerHTML={{
+	            __html: `
+	              {
                 "@context": "https://schema.org",
-                "@type": "Product",
-                "name": "${product.title}",
-                "image": "${product.images[0]}",
-                "description": "${product.description.toString().replace(/\n/g, ' ')}",
-                "sku": "${product._id}",
-                "mpn": "${product._id}",
+	                "@type": "Product",
+	                "name": "${product.title}",
+	                "image": "${product.images?.[0] || ''}",
+	                "description": "${product.description.toString().replace(/\n/g, ' ')}",
+	                "sku": "${product._id}",
+	                "mpn": "${product._id}",
                 "review": {
                   "@type": "Review",
                   "reviewRating": {
@@ -96,19 +96,12 @@ const ProductPage = ({ product }) => {
                   "price": "${product.price}",
                   "priceCurrency": "INR",
                   "availability": "${product.stock > 0 ? 'InStock' : 'OutOfStock'}",
-                  "priceValidUntil": "2024-11-05",
                   "url": "https://www.cheatswala.net/product/${product.slug}"
                 },
                 "aggregateRating": {
                   "@type": "AggregateRating",
                   "ratingValue": "4.8",
                   "reviewCount": "12"
-                },
-                "hasMerchantReturnPolicy": {
-                  "@type": "MerchantReturnPolicy",
-                  "returnFees": "Customer pays",
-                  "returnPolicyCountry": "IN",
-                  "returnPolicyCategory": "All"
                 }
               }
             `,
@@ -116,21 +109,21 @@ const ProductPage = ({ product }) => {
           key={'product-jsonld'}
         />
       </Head>
-      <SEO
-        title={`${product.title} - Cheatswala`}
-        description={product.description.substring(0, 120)}
-        keywords={product?.tags}
-        facebook={{
-          image: product.images[0],
-          url: `https://www.cheatswala.net/product/${product.slug}`,
-          type: "website",
-        }}
-        twitter={{
-          image: product.images[0],
-          site: "@cheatswala",
-          card: "summary_large_image",
-        }}
-      />
+	      <SEO
+	        title={`${product.title} - Cheatswala`}
+	        description={product.description.substring(0, 120)}
+	        keywords={product?.tags}
+	        facebook={{
+	          image: product.images?.[0] || '',
+	          url: `https://www.cheatswala.net/product/${product.slug}`,
+	          type: "website",
+	        }}
+	        twitter={{
+	          image: product.images?.[0] || '',
+	          site: "@cheatswala",
+	          card: "summary_large_image",
+	        }}
+	      />
       <Header />
       <MarginWrapper>
         <Center>

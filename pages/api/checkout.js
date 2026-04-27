@@ -1,12 +1,12 @@
 import mongooseConnect from '@/lib/mongoose';
 import { Order } from '@/models/Order';
 import { Product } from '@/models/Product';
-import { Address } from '@/models/Address';
 import { assertMethod } from '@/lib/api/http';
 import { getSessionUser } from '@/lib/api/auth';
 import { PaymentMethod } from '@/models/PaymentMethods';
 import { Setting } from '@/models/Setting';
 import { sendNewOrderTelegramNotification } from '@/lib/telegram';
+import { User } from '@/models/User';
 
 const getRequestBaseUrl = (req) => {
   const forwardedProto = req.headers['x-forwarded-proto'];
@@ -31,6 +31,7 @@ const handler = async (req, res) => {
     const { email, paymentMethod, cartProducts, defaultAddress } = req.body;
     const sessionUser = await getSessionUser(req);
     const accountEmail = (sessionUser?.email || '').trim().toLowerCase();
+    const accountUserId = sessionUser?.id || '';
     const normalizedEmail = ((email || '').trim().toLowerCase() || accountEmail);
 
     if (!normalizedEmail || !paymentMethod || !Array.isArray(cartProducts)) {
@@ -43,15 +44,10 @@ const handler = async (req, res) => {
 
     await mongooseConnect();
 
-    if (defaultAddress && accountEmail) {
-      const address = await Address.findOne({ userEmail: accountEmail });
-      const payload = { userEmail: accountEmail, email: normalizedEmail };
-
-      if (address) {
-        await Address.findByIdAndUpdate(address._id, payload, { new: true });
-      } else {
-        await Address.create(payload);
-      }
+    if (defaultAddress && accountUserId) {
+      await User.findByIdAndUpdate(accountUserId, {
+        $set: { deliveryEmail: normalizedEmail },
+      });
     }
 
     const productIds = cartProducts;
@@ -78,7 +74,7 @@ const handler = async (req, res) => {
               currency: 'INR',
               product_data: {
                 name: productInfo.title,
-                image: productInfo.images[0],
+                image: productInfo.images?.[0] || '',
                 metadata: {
                   productId: productId,
                   selling_price: Number(productInfo.price),

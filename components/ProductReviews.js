@@ -221,7 +221,7 @@ const ProductReviews = ({ product }) => {
       itemReviewed: {
         '@type': 'Product',
         name: product.title,
-        image: `${product.images[0]}`,
+        image: `${product.images?.[0] || ''}`,
         description: `${product.description.toString().replace(/\n/g, ' ')}`,
         sku: `${product._id}`,
         brand: {

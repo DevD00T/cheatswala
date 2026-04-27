@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-import Image from 'next/image';
 import styled from 'styled-components';
 const Postwidget = styled.div`
   font-weight: 400;
@@ -112,11 +111,18 @@ const PostWidget = ({
           <li key={post.title} className='postwidget_post'>
             <div className='postwidget_post_imageWidget'>
               <div className='postwidget_post_imageWidget_image'>
-                <Image
-                  fill
-                  style={{ objectFit: 'cover' }}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={post.featuredImage.url}
                   alt={post.title}
+                  loading='lazy'
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '10px',
+                    display: 'block',
+                  }}
                 />
               </div>
 

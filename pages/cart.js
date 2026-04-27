@@ -20,7 +20,7 @@ import Head from 'next/head';
 import Layout from '@/components/Layout';
 import { useRouter } from 'next/router';
 import Title from '@/components/Title';
-import { useUser } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 const ColumnsWrapper = styled.div`
   display: grid;
   grid-template-columns: 1fr;
@@ -221,7 +221,9 @@ const CartPage = () => {
   const [defaultAddress, setDefaultAddress] = useState(false);
 
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const { isSignedIn, user } = useUser();
+  const { data: session } = useSession();
+  const isSignedIn = !!session?.user?.email;
+  const userEmail = session?.user?.email || '';
   const { snackBarOpen } = useContext(SnackBarContext);
   const [paymentMethodList, setPaymentMethodList] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -293,8 +295,8 @@ const CartPage = () => {
           if (response.data) {
             const { email } = response.data;
             setEmail(email);
-          } else if (user?.primaryEmailAddress?.emailAddress) {
-            setEmail(user.primaryEmailAddress.emailAddress);
+          } else if (userEmail) {
+            setEmail(userEmail);
           }
         }
       } catch (error) {
@@ -311,7 +313,7 @@ const CartPage = () => {
     return () => {
       source.cancel();
     };
-  }, [isSignedIn, user]);
+  }, [isSignedIn, userEmail]);
 
   // Handle success state when the URL contains 'success'
   useEffect(() => {
@@ -563,7 +565,12 @@ const CartPage = () => {
                       <tr key={product._id}>
                         <ProductInfoCell>
                           <ProductImageBox href={`/product/${product.slug}`}>
-                            <img src={product.images[0]} alt={product.title} />
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={product.images?.[0] || '/placeholder.svg'}
+                              alt={product.title || 'Product'}
+                              loading='lazy'
+                            />
                           </ProductImageBox>
                         </ProductInfoCell>
                         <ProductTitle>

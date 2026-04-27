@@ -169,7 +169,12 @@ const Featured = ({ product }) => {
           </Column>
           <RevealWrapper delay={0}>
             <Column>
-              <img src={product.images[0]} alt={product.title} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.images?.[0] || '/placeholder.svg'}
+                alt={product.title || 'Product'}
+                loading='lazy'
+              />
             </Column>
           </RevealWrapper>
         </ColumnsWrapper>

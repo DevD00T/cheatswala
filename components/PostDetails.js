@@ -3,7 +3,6 @@ import { RichText } from '@graphcms/rich-text-react-renderer';
 import { FaFacebookF, FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import docco from 'react-syntax-highlighter/dist/cjs/styles/hljs/monokai';
-import Image from 'next/image';
 import styled from 'styled-components';
 
 //all headings - h2
@@ -334,11 +333,17 @@ const PostDetails = ({ post }) => {
                     <div className='productEmbed'>
                       <div className='productEmbed_img'>
                         <a href={url}>
-                          <Image
-                            fill
-                            style={{ objectFit: 'contain' }}
-                            alt={name}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
                             src={photo.url}
+                            alt={name}
+                            loading='lazy'
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
                           />
                         </a>
                       </div>
@@ -386,11 +391,17 @@ const PostDetails = ({ post }) => {
                     style={{ aspectRatio: width / height }}
                     className='postDetails_img'
                   >
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={src}
                       alt={title}
-                      fill
-                      style={{ objectFit: 'contain' }}
+                      loading='lazy'
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: 'block',
+                      }}
                     />
                   </div>
                 );
@@ -416,11 +427,17 @@ const PostDetails = ({ post }) => {
           <h2 className='postDetails_excerpt'>{post.excerpt}</h2>
           {!post.featuredPost && (
             <div className='postDetails_cover_img'>
-              <Image
-                fill
-                style={{ objectFit: 'cover' }}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={post.featuredImage.url}
                 alt={post.title}
+                loading='lazy'
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
               />
             </div>
           )}
@@ -434,11 +451,17 @@ const PostDetails = ({ post }) => {
                     <div className='productEmbed'>
                       <div className='productEmbed_img'>
                         <a href={url}>
-                          <Image
-                            fill
-                            style={{ objectFit: 'contain' }}
-                            alt={name}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
                             src={photo.url}
+                            alt={name}
+                            loading='lazy'
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
                           />
                         </a>
                       </div>
@@ -486,11 +509,17 @@ const PostDetails = ({ post }) => {
                     style={{ aspectRatio: width / height }}
                     className='postDetails_img'
                   >
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={src}
                       alt={title}
-                      fill
-                      style={{ objectFit: 'contain' }}
+                      loading='lazy'
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: 'block',
+                      }}
                     />
                   </div>
                 );

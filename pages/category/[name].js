@@ -16,7 +16,7 @@ import DropIcon from '@/components/icons/DropIcon';
 import { MarginWrapper } from '@/components/MarginWrapper';
 import Title from '@/components/Title';
 import { WishedProduct } from '@/models/WishedProduct';
-import { useUser } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 import SEO from '@bradgarropy/next-seo';
 import Head from 'next/head';
 
@@ -112,7 +112,8 @@ const CategoryPage = ({
   products: originalProducts,
   wishedProducts: originalWishedProducts,
 }) => {
-  const { isSignedIn } = useUser();
+  const { data: session } = useSession();
+  const isSignedIn = !!session?.user?.email;
   const defaultFilterValues = category.properties.map((p) => ({
     name: p.name,
     value: 'all',

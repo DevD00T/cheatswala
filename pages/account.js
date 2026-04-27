@@ -22,13 +22,7 @@ import { useRouter } from 'next/router';
 import SEO from '@bradgarropy/next-seo';
 import Head from 'next/head';
 import Layout from '@/components/Layout';
-import {
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  useClerk,
-  useUser,
-} from '@clerk/nextjs';
+import { signIn, signOut, useSession } from 'next-auth/react';
 
 export const ColsWrapper = styled.div`
   display: grid;
@@ -111,6 +105,48 @@ const AuthPrimaryButton = styled(AuthActionButton)`
   color: #fff;
 `;
 
+const AuthNotice = styled.p`
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+  color: ${(props) => (props.$error ? '#b91c1c' : '#166534')};
+`;
+
+const PasswordRequirements = styled.div`
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #4b5563;
+`;
+
+const Requirement = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  span:first-child {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: ${(props) => (props.$met ? '#16a34a' : '#d1d5db')};
+  }
+`;
+
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+
+const getClientPasswordError = (password = '') => {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
+  }
+
+  if (!PASSWORD_REGEX.test(password)) {
+    return 'Password must include uppercase, lowercase, and a number.';
+  }
+
+  return '';
+};
+
 const AccountPage = () => {
   const [email, setEmail] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -123,9 +159,52 @@ const AccountPage = () => {
   const [activeTab, setActiveTab] = useState('Wishlist');
   const [orders, setOrders] = useState([]);
 
-  const { isLoaded, isSignedIn } = useUser();
-  const { signOut } = useClerk();
+  const { data: session, status } = useSession();
+  const isSignedIn = !!session?.user?.email;
+  const sessionUserId = session?.user?.id || '';
   const router = useRouter();
+
+  const [authTab, setAuthTab] = useState('Sign In');
+  const [authNotice, setAuthNotice] = useState({ error: false, message: '' });
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
+  const [signUpName, setSignUpName] = useState('');
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    if (!router.isReady) {
+      return;
+    }
+
+    const tab = typeof router.query.tab === 'string' ? router.query.tab : '';
+    const token = typeof router.query.token === 'string' ? router.query.token : '';
+
+    if (token) {
+      setResetToken(token);
+      setAuthTab('Reset Password');
+      return;
+    }
+
+    if (tab === 'signup') {
+      setAuthTab('Sign Up');
+      return;
+    }
+
+    if (tab === 'reset') {
+      setAuthTab('Reset Password');
+      return;
+    }
+
+    if (tab === 'signin') {
+      setAuthTab('Sign In');
+      return;
+    }
+  }, [router.isReady, router.query.tab, router.query.token]);
 
   useEffect(() => {
     const source = axios.CancelToken.source();
@@ -167,7 +246,7 @@ const AccountPage = () => {
       }
     };
 
-    if (!isLoaded) {
+    if (status === 'loading') {
       return () => {
         source.cancel();
         sourceWish.cancel();
@@ -196,7 +275,7 @@ const AccountPage = () => {
       sourceWish.cancel();
       sourceOrders.cancel();
     };
-  }, [isLoaded, isSignedIn]);
+  }, [isSignedIn, status]);
 
   useEffect(() => {
     if (router?.query?.ordercanceled === '1') {
@@ -205,7 +284,7 @@ const AccountPage = () => {
   }, [router]);
 
   const logout = async () => {
-    await signOut({ redirectUrl: '/account' });
+    await signOut({ callbackUrl: '/account' });
   };
 
   const handleOrderInputChange = (e) => {
@@ -243,6 +322,125 @@ const AccountPage = () => {
 
   const productRemoved = (id) => {
     setWishedProducts((prev) => prev.filter((p) => p._id.toString() !== id));
+  };
+
+  const showAuthNotice = (message, error = false) => {
+    setAuthNotice({ error, message });
+  };
+
+  const handleSignIn = async () => {
+    showAuthNotice('');
+    setAuthBusy(true);
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: signInEmail,
+        password: signInPassword,
+      });
+
+      if (result?.error) {
+        showAuthNotice('Invalid email or password.', true);
+        return;
+      }
+
+      showAuthNotice('Signed in successfully.');
+      setSignInPassword('');
+    } catch (error) {
+      showAuthNotice('Unable to sign in right now.', true);
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleSignUp = async () => {
+    showAuthNotice('');
+    const clientError = getClientPasswordError(signUpPassword);
+    if (clientError) {
+      showAuthNotice(clientError, true);
+      return;
+    }
+
+    setAuthBusy(true);
+    try {
+      await axios.post('/api/auth/register', {
+        name: signUpName,
+        email: signUpEmail,
+        password: signUpPassword,
+      });
+
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: signUpEmail,
+        password: signUpPassword,
+      });
+
+      if (result?.error) {
+        showAuthNotice('Account created. Please sign in.', false);
+        setAuthTab('Sign In');
+        return;
+      }
+
+      showAuthNotice('Account created and signed in.');
+      setSignUpPassword('');
+    } catch (error) {
+      showAuthNotice(
+        error?.response?.data?.message || 'Unable to create account.',
+        true
+      );
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    showAuthNotice('');
+    setAuthBusy(true);
+    try {
+      const response = await axios.post('/api/auth/forgot-password', {
+        email: resetEmail,
+      });
+      showAuthNotice(
+        response?.data?.message ||
+          'If an account exists, a reset link has been emailed.',
+        false
+      );
+    } catch (error) {
+      showAuthNotice(
+        error?.response?.data?.message ||
+          'Unable to request password reset right now.',
+        true
+      );
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    showAuthNotice('');
+    const clientError = getClientPasswordError(resetPassword);
+    if (clientError) {
+      showAuthNotice(clientError, true);
+      return;
+    }
+
+    setAuthBusy(true);
+    try {
+      const response = await axios.post('/api/auth/reset-password', {
+        token: resetToken,
+        password: resetPassword,
+      });
+      showAuthNotice(response?.data?.message || 'Password updated.', false);
+      setResetPassword('');
+      setResetToken('');
+      await router.push('/account?tab=signin');
+    } catch (error) {
+      showAuthNotice(
+        error?.response?.data?.message || 'Unable to reset password.',
+        true
+      );
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   return (
@@ -289,22 +487,171 @@ const AccountPage = () => {
             </AccountActions>
           </CategoryHeader>
 
-          <SignedOut>
+          {!isSignedIn ? (
             <AuthCard className='auth-card' white>
-              <h2>Login to your account</h2>
+              <h2>Sign in</h2>
               <AuthCopy>
-                Use secure Clerk authentication to access orders and wishlist.
+                Sign in to access your orders, wishlist, and delivery email.
               </AuthCopy>
-              <AuthButtons>
-                <SignInButton mode='modal'>
-                  <AuthActionButton type='button'>Sign In</AuthActionButton>
-                </SignInButton>
-                <SignUpButton mode='modal'>
-                  <AuthPrimaryButton type='button'>Create account</AuthPrimaryButton>
-                </SignUpButton>
-              </AuthButtons>
+              <Tabs
+                tabs={['Sign In', 'Sign Up', 'Reset Password']}
+                active={authTab}
+                onChange={(tabName) => {
+                  setAuthTab(tabName);
+                  showAuthNotice('');
+                }}
+              />
+
+              {authTab === 'Sign In' ? (
+                <>
+                  <Input
+                    type='email'
+                    placeholder='Email'
+                    value={signInEmail}
+                    onChange={(e) => setSignInEmail(e.target.value)}
+                  />
+                  <Input
+                    type='password'
+                    placeholder='Password'
+                    value={signInPassword}
+                    onChange={(e) => setSignInPassword(e.target.value)}
+                  />
+                  <AuthButtons>
+                    <AuthPrimaryButton
+                      type='button'
+                      disabled={authBusy}
+                      onClick={handleSignIn}
+                    >
+                      {authBusy ? 'Signing in...' : 'Sign In'}
+                    </AuthPrimaryButton>
+                    <AuthActionButton
+                      type='button'
+                      disabled={authBusy}
+                      onClick={() => setAuthTab('Reset Password')}
+                    >
+                      Forgot password
+                    </AuthActionButton>
+                  </AuthButtons>
+                </>
+              ) : null}
+
+              {authTab === 'Sign Up' ? (
+                <>
+                  <Input
+                    type='text'
+                    placeholder='Name (optional)'
+                    value={signUpName}
+                    onChange={(e) => setSignUpName(e.target.value)}
+                  />
+                  <Input
+                    type='email'
+                    placeholder='Email'
+                    value={signUpEmail}
+                    onChange={(e) => setSignUpEmail(e.target.value)}
+                  />
+                  <Input
+                    type='password'
+                    placeholder='Password'
+                    value={signUpPassword}
+                    onChange={(e) => setSignUpPassword(e.target.value)}
+                  />
+                  <PasswordRequirements>
+                    <Requirement $met={signUpPassword.length >= 8}>
+                      <span />
+                      <span>At least 8 characters</span>
+                    </Requirement>
+                    <Requirement $met={/[a-z]/.test(signUpPassword)}>
+                      <span />
+                      <span>Lowercase letter</span>
+                    </Requirement>
+                    <Requirement $met={/[A-Z]/.test(signUpPassword)}>
+                      <span />
+                      <span>Uppercase letter</span>
+                    </Requirement>
+                    <Requirement $met={/\d/.test(signUpPassword)}>
+                      <span />
+                      <span>Number</span>
+                    </Requirement>
+                  </PasswordRequirements>
+                  <AuthButtons>
+                    <AuthPrimaryButton
+                      type='button'
+                      disabled={authBusy}
+                      onClick={handleSignUp}
+                    >
+                      {authBusy ? 'Creating...' : 'Create account'}
+                    </AuthPrimaryButton>
+                  </AuthButtons>
+                </>
+              ) : null}
+
+              {authTab === 'Reset Password' ? (
+                <>
+                  {resetToken ? (
+                    <>
+                      <Input
+                        type='password'
+                        placeholder='New password'
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                      />
+                      <PasswordRequirements>
+                        <Requirement $met={resetPassword.length >= 8}>
+                          <span />
+                          <span>At least 8 characters</span>
+                        </Requirement>
+                        <Requirement $met={/[a-z]/.test(resetPassword)}>
+                          <span />
+                          <span>Lowercase letter</span>
+                        </Requirement>
+                        <Requirement $met={/[A-Z]/.test(resetPassword)}>
+                          <span />
+                          <span>Uppercase letter</span>
+                        </Requirement>
+                        <Requirement $met={/\d/.test(resetPassword)}>
+                          <span />
+                          <span>Number</span>
+                        </Requirement>
+                      </PasswordRequirements>
+                      <AuthButtons>
+                        <AuthPrimaryButton
+                          type='button'
+                          disabled={authBusy}
+                          onClick={handleResetPassword}
+                        >
+                          {authBusy ? 'Updating...' : 'Update password'}
+                        </AuthPrimaryButton>
+                      </AuthButtons>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        type='email'
+                        placeholder='Email'
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                      />
+                      <AuthButtons>
+                        <AuthPrimaryButton
+                          type='button'
+                          disabled={authBusy}
+                          onClick={handleSendResetEmail}
+                        >
+                          {authBusy ? 'Sending...' : 'Send reset link'}
+                        </AuthPrimaryButton>
+                      </AuthButtons>
+                    </>
+                  )}
+                </>
+              ) : null}
+
+              {authNotice.message ? (
+                <AuthNotice $error={authNotice.error}>
+                  {authNotice.message}
+                </AuthNotice>
+              ) : null}
             </AuthCard>
-          </SignedOut>
+          ) : null}
 
           <ColsWrapper>
             <div>
@@ -314,7 +661,7 @@ const AccountPage = () => {
                   active={activeTab}
                   onChange={setActiveTab}
                 />
-                {!isSignedIn && <div>Login to view your orders and wishlist.</div>}
+                {!isSignedIn && <div>Sign in to view your orders and wishlist.</div>}
                 {activeTab === 'Wishlist' && (
                   <>
                     {loadedWish ? (
@@ -359,6 +706,11 @@ const AccountPage = () => {
               <div>
                 <WhiteBox white>
                   <h2>Default Delivery Email</h2>
+                  {sessionUserId ? (
+                    <AuthCopy style={{ marginTop: 6 }}>
+                      User ID: <b>{sessionUserId}</b>
+                    </AuthCopy>
+                  ) : null}
                   {loaded ? (
                     <>
                       <Input

@@ -1,5 +1,6 @@
 const { Schema, model, models } = require("mongoose");
 const mongoose = require("mongoose");
+require("./PaymentMethods");
 
 const OrderSchema = new mongoose.Schema(
   {

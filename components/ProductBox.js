@@ -11,7 +11,7 @@ import { RevealWrapper } from 'next-reveal';
 import HeartOutlineIcon from './icons/HeartOutline';
 import HeartSolidIcon from './icons/HeartSolid';
 import axios from 'axios';
-import { useUser } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 const ProductWrapper = styled(RevealWrapper)`
   display: flex;
   flex-direction: column;
@@ -120,7 +120,8 @@ const ProductBox = ({
   const url = '/product/' + slug;
   const [isWished, setIsWished] = useState(wished);
   const [stock, setStock] = useState(oldStock || 0);
-  const { isSignedIn } = useUser();
+  const { data: session } = useSession();
+  const isSignedIn = !!session?.user?.email;
   const router = useRouter();
   const toggleWishlist = async (e) => {
     e.preventDefault();

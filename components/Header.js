@@ -8,13 +8,7 @@ import CloseIcon from './icons/Close';
 import { NavActiveContext } from './NavActiveContext';
 import SearchIcon from './icons/Search';
 import { useRouter } from 'next/router';
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from '@clerk/nextjs';
+import { signOut, useSession } from 'next-auth/react';
 
 const StyledHeader = styled.header`
   background: var(--header-bg);
@@ -206,6 +200,8 @@ const Header = () => {
   const { cartProducts } = useContext(CartContext);
   const { mobileNavActive, setMobileNavActive } = useContext(NavActiveContext);
   const router = useRouter();
+  const { data: session, status } = useSession();
+  const isSignedIn = !!session?.user?.email;
   const logoScopeRef = useRef(null);
 
   const isActive = (href) =>
@@ -304,17 +300,23 @@ const Header = () => {
               Cart ({cartProducts.length})
             </NavLink>
             <AuthControls>
-              <SignedOut>
-                <SignInButton mode='modal'>
-                  <AuthActionButton type='button'>Sign In</AuthActionButton>
-                </SignInButton>
-                <SignUpButton mode='modal'>
-                  <AuthPrimaryButton type='button'>Sign Up</AuthPrimaryButton>
-                </SignUpButton>
-              </SignedOut>
-              <SignedIn>
-                <UserButton afterSignOutUrl='/' />
-              </SignedIn>
+              {status === 'loading' ? null : isSignedIn ? (
+                <AuthActionButton
+                  type='button'
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                >
+                  Logout
+                </AuthActionButton>
+              ) : (
+                <>
+                  <AuthActionButton as={Link} href='/account?tab=signin'>
+                    Sign In
+                  </AuthActionButton>
+                  <AuthPrimaryButton as={Link} href='/account?tab=signup'>
+                    Sign Up
+                  </AuthPrimaryButton>
+                </>
+              )}
             </AuthControls>
           </StyledNav>
           <SideIcons>

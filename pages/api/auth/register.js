@@ -39,9 +39,8 @@ export default async function handler(req, res) {
   if (existingUser) {
     existingUser.passwordHash = passwordHash;
     existingUser.name = existingUser.name || name || email.split('@')[0];
-    existingUser.authProviders = [
-      ...new Set([...(existingUser.authProviders || []), 'credentials']),
-    ];
+    existingUser.deliveryEmail = existingUser.deliveryEmail || email;
+    existingUser.roles = existingUser.roles?.length ? existingUser.roles : ['user'];
     await existingUser.save();
     return res.status(201).json({ message: 'Account created successfully.' });
   }
@@ -49,8 +48,9 @@ export default async function handler(req, res) {
   await User.create({
     name: name || email.split('@')[0],
     email,
+    deliveryEmail: email,
+    roles: ['user'],
     passwordHash,
-    authProviders: ['credentials'],
   });
 
   return res.status(201).json({ message: 'Account created successfully.' });

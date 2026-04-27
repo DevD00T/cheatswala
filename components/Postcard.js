@@ -2,7 +2,6 @@ import Link from 'next/link';
 import React from 'react';
 import moment from 'moment';
 import { FaFacebookF, FaTwitter, FaLinkedin, FaWhatsapp } from 'react-icons/fa';
-import Image from 'next/image';
 import { AiOutlineArrowRight } from 'react-icons/ai';
 import styled from 'styled-components';
 const PostCard = styled.div`
@@ -168,11 +167,17 @@ const Postcard = ({
   return (
     <PostCard>
       <div className='postcard_img'>
-        <Image
-          fill
-          style={{ objectFit: 'cover' }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={featuredImage.url}
           alt={title}
+          loading='lazy'
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
         />
       </div>
 

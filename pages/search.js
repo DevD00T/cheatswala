@@ -10,7 +10,7 @@ import ProductsGrid from '@/components/ProductsGrid';
 import { debounce } from 'lodash';
 import Spinner from '@/components/Spinner';
 import BottomCart from '@/components/BottomCart';
-import { useUser } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 import SEO from '@bradgarropy/next-seo';
 import Head from 'next/head';
 import Layout from '@/components/Layout';
@@ -32,7 +32,8 @@ const InputWrapper = styled.div`
 `;
 
 const SearchPage = () => {
-  const { isSignedIn } = useUser();
+  const { data: session } = useSession();
+  const isSignedIn = !!session?.user?.email;
   const [phrase, setPhrase] = useState('');
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);

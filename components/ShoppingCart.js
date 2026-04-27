@@ -94,7 +94,12 @@ const ShoppingCart = ({
   return (
     <ItemBox>
       <ProductImageBox href={`/product/${product.slug}`}>
-        <img src={product.images[0]} alt={product.title} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={product.images?.[0] || '/placeholder.svg'}
+          alt={product.title || 'Product'}
+          loading='lazy'
+        />
       </ProductImageBox>
 
       <ProductTitle>

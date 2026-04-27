@@ -1,5 +1,5 @@
 import mongooseConnect from '@/lib/mongoose';
-import { Address } from '@/models/Address';
+import { User } from '@/models/User';
 import { assertMethod } from '@/lib/api/http';
 import { requireSessionUser } from '@/lib/api/auth';
 
@@ -15,48 +15,33 @@ const handler = async (req, res) => {
     return;
   }
 
-  const email = (req.body?.email || '').trim();
-  const address = await Address.findOne({ userEmail: user.email });
+  const email = (req.body?.email || '').trim().toLowerCase();
+  const userDoc = await User.findById(user.id);
 
   if (req.method === 'PUT') {
     if (!email) {
       return res.status(400).json({ message: 'Email is required.' });
     }
 
-    if (address) {
-      const updated = await Address.findByIdAndUpdate(
-        address._id,
-        { email },
-        { new: true }
-      );
-      return res.json(updated);
+    if (!userDoc) {
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    const created = await Address.create({
-      userEmail: user.email,
-      email,
-    });
-    return res.json(created);
+    userDoc.deliveryEmail = email;
+    await userDoc.save();
+    return res.json({ email: userDoc.deliveryEmail || userDoc.email });
   }
 
-  if (!address) {
-    const created = await Address.create({
-      userEmail: user.email,
-      email: user.email,
-    });
-    return res.json(created);
+  if (!userDoc) {
+    return res.status(404).json({ message: 'User not found.' });
   }
 
-  if (!address.email) {
-    const updated = await Address.findByIdAndUpdate(
-      address._id,
-      { email: user.email },
-      { new: true }
-    );
-    return res.json(updated);
+  if (!userDoc.deliveryEmail) {
+    userDoc.deliveryEmail = userDoc.email;
+    await userDoc.save();
   }
 
-  return res.json(address);
+  return res.json({ email: userDoc.deliveryEmail || userDoc.email });
 };
 
 export default handler;
