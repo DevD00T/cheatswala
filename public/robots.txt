@@ -1,0 +1,15 @@
+# *
+User-agent: *
+Disallow: /404
+
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.cheatswala.net
+
+# Sitemaps
+Sitemap: https://www.cheatswala.net/sitemap.xml
+Sitemap: https://www.cheatswala.net/sitemap-products.xml
+Sitemap: https://www.cheatswala.net/sitemap-categories.xml
