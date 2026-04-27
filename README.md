@@ -11,6 +11,7 @@ SSR Next.js storefront for products, checkout, orders, wishlist, and account.
    - `RESEND_FROM` (example: `Litecheats Technologies <support@litecheats.com>`)
 4. Optional but recommended for Telegram ops notifications:
    - `TELEGRAM_BOT_TOKEN`
+   - `TELEGRAM_BOT_USERNAME` (optional; used in `/start` message)
    - `TELEGRAM_ADMIN_CHAT_ID`
    - `TELEGRAM_NOTIFY_USERNAMES` (comma-separated list, e.g. `@zirosyntax,@ops_channel`)
    - `ADMIN_DASHBOARD_URL` (example: `https://admin.litecheats.com`)
