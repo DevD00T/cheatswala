@@ -19,6 +19,7 @@ const StyledHeader = styled.header`
   left: 0;
   right: 0;
   z-index: 999;
+  padding-top: env(safe-area-inset-top);
 `;
 
 const Logo = styled(Link)`
@@ -81,7 +82,7 @@ const Wrapper = styled.div`
 
 const StyledNav = styled.nav`
   ${(props) =>
-    props.mobileNavActive
+    props.$mobileNavActive
       ? css`
           display: flex;
         `
@@ -95,8 +96,11 @@ const StyledNav = styled.nav`
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 84px 24px 24px;
+  padding: calc(84px + env(safe-area-inset-top)) 24px 24px;
   background: var(--mobile-nav-bg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 2;
 
   @media screen and (min-width: 768px) {
     display: flex;
@@ -105,6 +109,7 @@ const StyledNav = styled.nav`
     padding: 0;
     background: transparent;
     gap: 6px;
+    overflow: visible;
   }
 `;
 
@@ -208,6 +213,28 @@ const Header = () => {
     router.pathname === href || router.pathname.startsWith(`${href}/`);
 
   useEffect(() => {
+    // Close the mobile drawer whenever route changes.
+    const handleRoute = () => setMobileNavActive(false);
+    router.events.on('routeChangeStart', handleRoute);
+    return () => {
+      router.events.off('routeChangeStart', handleRoute);
+    };
+  }, [router.events, setMobileNavActive]);
+
+  useEffect(() => {
+    // Prevent background scrolling when the mobile menu is open.
+    if (typeof document === 'undefined') return;
+    if (mobileNavActive) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+    return undefined;
+  }, [mobileNavActive]);
+
+  useEffect(() => {
     let ctx;
 
     const prefersReducedMotion =
@@ -279,7 +306,7 @@ const Header = () => {
               <LogoUnderline className='cw-logo-underline' aria-hidden='true' />
             </LogoInner>
           </Logo>
-          <StyledNav mobileNavActive={mobileNavActive}>
+          <StyledNav $mobileNavActive={mobileNavActive}>
             {navItems.map((item) => (
               <NavLink
                 key={item.href}
