@@ -22,6 +22,11 @@ const getRequestBaseUrl = (req) => {
   return `${protocol}://${host}`;
 };
 
+const useTelegramOrderWorker =
+  String(process.env.TELEGRAM_USE_ORDER_WORKER || '')
+    .trim()
+    .toLowerCase() === 'true';
+
 const handler = async (req, res) => {
   if (!assertMethod(req, res, ['POST'])) {
     return;
@@ -106,25 +111,27 @@ const handler = async (req, res) => {
       status: 'Waiting for payment',
     });
 
-    try {
-      const [paymentMethodInfo, telegramRecipients] = await Promise.all([
-        PaymentMethod.findById(paymentMethod).select('name').lean(),
-        Setting.findOne({ name: 'telegramNotifyUsernames' })
-          .select('value')
-          .lean(),
-      ]);
+    if (!useTelegramOrderWorker) {
+      try {
+        const [paymentMethodInfo, telegramRecipients] = await Promise.all([
+          PaymentMethod.findById(paymentMethod).select('name').lean(),
+          Setting.findOne({ name: 'telegramNotifyUsernames' })
+            .select('value')
+            .lean(),
+        ]);
 
-      await sendNewOrderTelegramNotification({
-        orderId: orderDoc._id.toString(),
-        orderEmail: normalizedEmail,
-        paymentMethodName: paymentMethodInfo?.name || '',
-        itemCount: cartProducts.length,
-        totalAmount: totalPrice,
-        storefrontUrl: getRequestBaseUrl(req),
-        notifyTargets: telegramRecipients?.value,
-      });
-    } catch (telegramError) {
-      console.error('Telegram notification failed:', telegramError?.message);
+        await sendNewOrderTelegramNotification({
+          orderId: orderDoc._id.toString(),
+          orderEmail: normalizedEmail,
+          paymentMethodName: paymentMethodInfo?.name || '',
+          itemCount: cartProducts.length,
+          totalAmount: totalPrice,
+          storefrontUrl: getRequestBaseUrl(req),
+          notifyTargets: telegramRecipients?.value,
+        });
+      } catch (telegramError) {
+        console.error('Telegram notification failed:', telegramError?.message);
+      }
     }
 
     return res.json({

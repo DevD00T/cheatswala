@@ -43,7 +43,9 @@ App runs on `http://localhost:3000`.
 
 ## Telegram Notifications
 
-- New manual-payment orders send a Telegram alert using `grammy`.
+- New manual-payment orders can be sent in two modes:
+  - `Webhook mode` (existing): notifications are sent from checkout API using `grammy`.
+  - `Bun worker mode` (recommended for reliability): a server-side Bun worker polls MongoDB for new orders and sends Telegram alerts.
 - Recipients are resolved in this order:
   - Admin settings value `telegramNotifyUsernames`
   - `TELEGRAM_NOTIFY_USERNAMES` env fallback
@@ -57,6 +59,22 @@ App runs on `http://localhost:3000`.
   - Open orders queue
   - Open storefront payment page for that order
 - Webhook endpoint: `POST /api/telegram/webhook`
+
+### Bun Worker Mode
+
+1. Set `TELEGRAM_USE_ORDER_WORKER=true` in env.
+2. Ensure these are configured: `MONGODB_URI`, `TELEGRAM_BOT_TOKEN`, `ADMIN_DASHBOARD_URL`, `ADMIN_API_SERVICE_TOKEN`.
+3. Run worker:
+
+```bash
+npm run telegram:worker
+```
+
+- The worker watches new orders from MongoDB and sends Telegram order cards with inline buttons.
+- One-click actions (`Mark Delivered`, `Send Email`, `Cancel Order`) call admin APIs with `x-service-token`.
+- Keep webhook route active (`/api/telegram/webhook`) with `TELEGRAM_WORKER_ENABLE_UPDATE_POLLING=false` for production webhook mode.
+- `/start` stores Telegram subscriber chat mapping.
+- `/status` is admin-restricted (configured admin targets + explicit allow for `@zirosyntax`).
 
 ## Product Images
 
