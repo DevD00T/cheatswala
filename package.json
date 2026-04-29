@@ -8,14 +8,15 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "bun --bun next dev",
+    "dev": "bun run index.js",
     "dev:next": "next dev",
     "lint": "next lint",
     "start": "bun run index.js",
-    "start:web": "bun run index.js",
+    "start:cluster": "ENABLE_NODE_CLUSTER=true bun run index.js",
+    "worker:telegram": "bun run scripts/telegram-order-worker.mjs",
     "api:serve": "bun run scripts/bun-api-server.ts",
     "telegram:worker": "bun run scripts/telegram-order-worker.mjs",
-    "start:stack": "sh -c 'bun run index.js & bun run scripts/telegram-order-worker.mjs & wait'",
+    "start:stack": "sh -c 'ENABLE_NODE_CLUSTER=true bun run index.js & bun run scripts/telegram-order-worker.mjs & wait'",
     "build:start": "bun run build && bun run start:stack",
     "postbuild": "next-sitemap --config next-sitemap.config.js"
   },
