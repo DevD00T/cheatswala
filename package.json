@@ -6,14 +6,13 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "concurrently -k -n web,worker -c cyan,magenta \"npm:dev:web\" \"npm:telegram:worker\"",
-    "dev:web": "next dev",
-    "build": "next build",
-    "start": "concurrently -k -n web,worker -c cyan,magenta \"npm:start:web\" \"npm:telegram:worker\"",
-    "start:web": "next start",
-    "lint": "next lint",
+    "dev": "bun --bun next dev",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start",
+    "lint": "bun --bun next lint",
+    "api:serve": "bun run scripts/bun-api-server.ts",
     "telegram:worker": "bun run scripts/telegram-order-worker.mjs",
-    "postbuild": "next-sitemap --config next-sitemap.config.js"
+    "postbuild": "bun --bun next-sitemap --config next-sitemap.config.js"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",
@@ -69,8 +68,5 @@
     "twilio": "^4.11.2",
     "typewriter-effect": "^2.19.0",
     "uuid": "^9.0.0"
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1"
   }
 }

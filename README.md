@@ -76,6 +76,25 @@ npm run telegram:worker
 - `/start` stores Telegram subscriber chat mapping.
 - `/status` is admin-restricted (configured admin targets + explicit allow for `@zirosyntax`).
 
+## Bun API Server
+
+- A separate Bun-native API service is available at `scripts/bun-api-server.ts`.
+- It provides:
+  - static + dynamic routes (example: `/api/status`, `/users/:id`)
+  - JSON API endpoints (example: `/api/posts`)
+  - session cookies + profile route (`/api/session/start`, `/profile`)
+  - password hashing/verification (`Bun.password.hash`, `Bun.password.verify`)
+  - UUIDv7 IDs (`Bun.randomUUIDv7`) for session/post IDs
+  - WebSocket endpoint at `/ws` with pub/sub chat broadcast
+
+Run it with:
+
+```bash
+npm run api:serve
+```
+
+Default port is `4010`. Override with `BUN_API_PORT`.
+
 ## Product Images
 
 - Product images are served from MongoDB GridFS through `GET /api/media/[id]`.

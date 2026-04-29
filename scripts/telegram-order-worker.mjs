@@ -93,6 +93,7 @@ const ACTION_TO_LABEL = {
   cancel: 'Cancel Order',
   email: 'Send Email',
 };
+const ALWAYS_ALLOWED_ADMIN_USERNAMES = new Set(['zirosyntax']);
 
 const stats = {
   startedAt: new Date(),
@@ -258,6 +259,53 @@ const getConfiguredTargets = async (settingsCollection) => {
   return Array.from(new Set(targets));
 };
 
+const isWorkerAdminRequest = async ({
+  chatId,
+  username,
+  settingsCollection,
+  subscribersCollection,
+}) => {
+  const chatIdValue = String(chatId || '').trim();
+  const normalizedUsername = normalizeUsername(username);
+
+  if (normalizedUsername && ALWAYS_ALLOWED_ADMIN_USERNAMES.has(normalizedUsername)) {
+    return true;
+  }
+
+  const targets = await getConfiguredTargets(settingsCollection);
+  const allowedChatIds = new Set();
+  const allowedHandles = new Set([...ALWAYS_ALLOWED_ADMIN_USERNAMES]);
+
+  targets.forEach((target) => {
+    if (!target) return;
+    if (/^-?\d+$/.test(target)) {
+      allowedChatIds.add(String(target));
+      return;
+    }
+
+    const normalized = normalizeUsername(target);
+    if (normalized) {
+      allowedHandles.add(normalized);
+    }
+  });
+
+  if (chatIdValue && allowedChatIds.has(chatIdValue)) {
+    return true;
+  }
+
+  if (normalizedUsername && allowedHandles.has(normalizedUsername)) {
+    return true;
+  }
+
+  if (!chatIdValue || allowedHandles.size === 0) {
+    return false;
+  }
+
+  const subscriber = await subscribersCollection.findOne({ chatId: chatIdValue });
+  const subscriberUsername = normalizeUsername(subscriber?.username || '');
+  return !!subscriberUsername && allowedHandles.has(subscriberUsername);
+};
+
 const resolveTelegramRecipients = async ({ settingsCollection, subscribersCollection }) => {
   const targets = await getConfiguredTargets(settingsCollection);
   if (targets.length === 0) {
@@ -381,9 +429,24 @@ const sendOrderNotification = async ({ order, paymentMethodName, recipients }) =
   };
 };
 
-const handleStatusCommand = async (message) => {
+const handleStatusCommand = async ({ message, settingsCollection, subscribersCollection }) => {
   const chatId = message?.chat?.id;
   if (!chatId) return;
+
+  const allowed = await isWorkerAdminRequest({
+    chatId,
+    username: message?.from?.username,
+    settingsCollection,
+    subscribersCollection,
+  });
+
+  if (!allowed) {
+    await telegramRequest('sendMessage', {
+      chat_id: chatId,
+      text: 'Unauthorized. This command is restricted to configured admin Telegram accounts.',
+    });
+    return;
+  }
 
   const lines = [
     '*Worker Status*',
@@ -426,12 +489,33 @@ const handleStartCommand = async ({ message, subscribersCollection }) => {
   });
 };
 
-const handleCallbackQuery = async (callbackQuery) => {
+const handleCallbackQuery = async ({
+  callbackQuery,
+  settingsCollection,
+  subscribersCollection,
+}) => {
   const callbackId = callbackQuery?.id;
   const chatId = callbackQuery?.message?.chat?.id;
+  const username = callbackQuery?.from?.username;
   const parsed = parseOrderActionCallbackData(callbackQuery?.data);
 
   if (!callbackId) return;
+
+  const allowed = await isWorkerAdminRequest({
+    chatId,
+    username,
+    settingsCollection,
+    subscribersCollection,
+  });
+
+  if (!allowed) {
+    await telegramRequest('answerCallbackQuery', {
+      callback_query_id: callbackId,
+      text: 'Unauthorized action.',
+      show_alert: true,
+    });
+    return;
+  }
 
   if (!parsed) {
     await telegramRequest('answerCallbackQuery', {
@@ -462,7 +546,7 @@ const handleCallbackQuery = async (callbackQuery) => {
   stats.lastCallbackAt = new Date();
 };
 
-const handleUpdate = async (update, subscribersCollection) => {
+const handleUpdate = async (update, { settingsCollection, subscribersCollection }) => {
   if (update?.message?.text) {
     const text = String(update.message.text || '').trim();
 
@@ -472,14 +556,22 @@ const handleUpdate = async (update, subscribersCollection) => {
     }
 
     if (text.startsWith('/status')) {
-      await handleStatusCommand(update.message);
+      await handleStatusCommand({
+        message: update.message,
+        settingsCollection,
+        subscribersCollection,
+      });
       return;
     }
   }
 
   if (update?.callback_query) {
     try {
-      await handleCallbackQuery(update.callback_query);
+      await handleCallbackQuery({
+        callbackQuery: update.callback_query,
+        settingsCollection,
+        subscribersCollection,
+      });
     } catch (error) {
       stats.callbackErrors += 1;
       console.error(`[telegram-worker] callback handler failed: ${error.message}`);
@@ -799,7 +891,7 @@ const startOrderLoop = async (collections) => {
   }
 };
 
-const startUpdatesLoop = async (subscribersCollection) => {
+const startUpdatesLoop = async ({ settingsCollection, subscribersCollection }) => {
   while (!shuttingDown) {
     try {
       const updates = await telegramRequest('getUpdates', {
@@ -815,7 +907,7 @@ const startUpdatesLoop = async (subscribersCollection) => {
 
       for (const update of updates) {
         telegramOffset = Math.max(telegramOffset, Number(update.update_id || 0) + 1);
-        await handleUpdate(update, subscribersCollection);
+        await handleUpdate(update, { settingsCollection, subscribersCollection });
       }
     } catch (error) {
       const status = Number(error?.status || 0);
@@ -898,7 +990,7 @@ const main = async () => {
   ];
 
   if (config.enableUpdatePolling) {
-    tasks.push(startUpdatesLoop(subscribersCollection));
+    tasks.push(startUpdatesLoop({ settingsCollection, subscribersCollection }));
     console.log('[telegram-worker] Telegram update polling is enabled.');
   } else {
     console.log(
