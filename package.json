@@ -2,17 +2,22 @@
   "name": "ecommerce-front",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.2.13",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
+    "build": "next build",
     "dev": "bun --bun next dev",
-    "build": "bun --bun next build",
-    "start": "bun --bun next start",
-    "lint": "bun --bun next lint",
+    "dev:next": "next dev",
+    "lint": "next lint",
+    "start": "bun run index.js",
+    "start:web": "bun run index.js",
     "api:serve": "bun run scripts/bun-api-server.ts",
     "telegram:worker": "bun run scripts/telegram-order-worker.mjs",
-    "postbuild": "bun --bun next-sitemap --config next-sitemap.config.js"
+    "start:stack": "sh -c 'bun run index.js & bun run scripts/telegram-order-worker.mjs & wait'",
+    "build:start": "bun run build && bun run start:stack",
+    "postbuild": "next-sitemap --config next-sitemap.config.js"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",
